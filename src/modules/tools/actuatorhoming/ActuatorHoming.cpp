@@ -230,6 +230,7 @@ gcode->stream->printf("Moving %d\r\n", c);
         }
         //Safe delay
         safe_delay_us(delayus);
+gcode->stream->printf("Iteration step %d/%d\r\nMoved : %d\r\n", s, steps, movedAxis);
     }
 
     //using slowest fast speed of moved axis
