@@ -295,9 +295,6 @@ void ActuatorHoming::process_home_command(Gcode* gcode)
     // First wait for the queue to be empty
     THECONVEYOR->wait_for_idle();
 
-    // Enable the motors
-    THEKERNEL->stepper->turn_enable_pins_on();
-
     // do the actual homing
     if(homing_order != 0) {
         // if an order has been specified do it in the specified order
