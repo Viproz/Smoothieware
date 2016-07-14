@@ -40,6 +40,7 @@
 #define Z_AXIS 2
 
 #define endstops_module_enable_checksum         CHECKSUM("endstops_enable")
+#define actuator_homing_enabled_checksum        CHECKSUM("actuator_homing_enable")
 #define corexy_homing_checksum                  CHECKSUM("corexy_homing")
 #define delta_homing_checksum                   CHECKSUM("delta_homing")
 #define rdelta_homing_checksum                  CHECKSUM("rdelta_homing")
@@ -201,6 +202,8 @@ void Endstops::load_config()
     this->alpha_max= THEKERNEL->config->value(alpha_max_checksum)->by_default(500)->as_number();
     this->beta_max= THEKERNEL->config->value(beta_max_checksum)->by_default(500)->as_number();
     this->gamma_max= THEKERNEL->config->value(gamma_max_checksum)->by_default(500)->as_number();
+    
+    this->is_actuator               =  THEKERNEL->config->value(actuator_homing_enabled_checksum)->by_default(false)->as_bool();
 
     this->is_corexy                 =  THEKERNEL->config->value(corexy_homing_checksum)->by_default(false)->as_bool();
     this->is_delta                  =  THEKERNEL->config->value(delta_homing_checksum)->by_default(false)->as_bool();
@@ -754,7 +757,8 @@ void Endstops::on_gcode_received(void *argument)
 {
     Gcode *gcode = static_cast<Gcode *>(argument);
     if ( gcode->has_g && gcode->g == 28) {
-        process_home_command(gcode);
+        if(!this->is_actuator)
+            process_home_command(gcode);
 
     } else if (gcode->has_m) {
 

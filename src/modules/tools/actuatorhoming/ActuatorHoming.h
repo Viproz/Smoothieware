@@ -5,65 +5,40 @@
       You should have received a copy of the GNU General Public License along with Smoothie. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#ifndef ACTUATORHOMING_MODULE_H
+#define ACTUATORHOMING_MODULE_H
 
 #include "libs/Module.h"
 #include "libs/Pin.h"
 
 #include <bitset>
-#include <array>
 
 class StepperMotor;
 class Gcode;
 
-class Endstops : public Module{
+class ActuatorHoming : public Module{
     public:
-        Endstops();
+        ActuatorHoming();
         void on_module_loaded();
         void on_gcode_received(void* argument);
 
     private:
         void load_config();
-        void home(std::bitset<3> a);
-        void home_xy();
-        void back_off_home(std::bitset<3> axis);
-        void move_to_origin(std::bitset<3> axis);
-        void on_get_public_data(void* argument);
-        void on_set_public_data(void* argument);
-        void on_idle(void *argument);
-        bool debounced_get(int pin);
+        void home(char axes_to_move);
         void process_home_command(Gcode* gcode);
-        void set_homing_offset(Gcode* gcode);
-        uint32_t read_endstops(uint32_t dummy);
+        void on_get_public_data(void* argument);
 
         float homing_position[3];
-        float home_offset[3];
-        float saved_position[3]{0}; // save G28 (in grbl mode)
-        float alpha_max, beta_max, gamma_max;
+        uint8_t homing_order;
+        std::bitset<3> home_direction;
 
-        uint32_t debounce_count;
-        uint32_t  debounce_ms;
         float  retract_mm[3];
-        float  trim_mm[3];
         float  fast_rates[3];
         float  slow_rates[3];
         Pin    pins[6];
-        std::array<uint16_t, 3> debounce;
-
-        std::bitset<3> home_direction;
-        std::bitset<3> limit_enable;
-        std::bitset<3> axis_to_home;
-
         struct {
-            uint8_t homing_order:6;
-            uint8_t bounce_cnt:4;
             volatile char status:3;
-            bool is_actuator:1;
-            bool is_corexy:1;
-            bool is_delta:1;
-            bool is_rdelta:1;
-            bool is_scara:1;
-            bool home_z_first:1;
-            bool move_to_origin_after_home:1;
         };
 };
+
+#endif
