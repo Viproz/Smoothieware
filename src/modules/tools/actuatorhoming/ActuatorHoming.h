@@ -24,7 +24,7 @@ class ActuatorHoming : public Module{
 
     private:
         void load_config();
-        void home(char axes_to_move);
+        void home(char axes_to_move, Gcode* gcode);
         void process_home_command(Gcode* gcode);
         void on_get_public_data(void* argument);
 
