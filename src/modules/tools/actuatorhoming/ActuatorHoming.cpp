@@ -191,7 +191,7 @@ void ActuatorHoming::load_config()
     }
 }
 
-void ActuatorHoming::home(char axes_to_move)
+void ActuatorHoming::home(char axes_to_move, Gcode* gcode)
 {
     // check if on_halt (eg kill)
     if(THEKERNEL->is_halted()) return;
@@ -221,6 +221,7 @@ void ActuatorHoming::home(char axes_to_move)
         
         for ( int c = X_AXIS; c <= Z_AXIS; c++ ) {
             if ( ( axes_to_move >> c) & 1 ) {
+gcode->stream->printf("Moving %d\r\n", c);
                 if(this->pins[c + this->home_direction[c]].get()) {
                     STEPPER[c]->manual_step(this->home_direction[c]);
                     movedAxis = true;
@@ -291,7 +292,7 @@ void ActuatorHoming::home(char axes_to_move)
 void ActuatorHoming::process_home_command(Gcode* gcode)
 {
     // G28 is received, we have homing to do
-
+gcode->stream->printf("Start homing\r\n");
     // First wait for the queue to be empty
     THECONVEYOR->wait_for_idle();
 
@@ -302,13 +303,15 @@ void ActuatorHoming::process_home_command(Gcode* gcode)
         // eg 0b00100001 would be Y X Z, 0b00100100 would be X Y Z
         for (uint8_t m = homing_order; m != 0; m >>= 2) {
             int a = (1 << (m & 0x03)); // axis to move
-            home(a);
+            home(a, gcode);
+gcode->stream->printf("Homing %d \r\n", a);
             // check if on_halt (eg kill)
             if(THEKERNEL->is_halted()) break;
         }
     } else {
         // they all home at the same time
-        home(7);
+gcode->stream->printf("Homing all\r\n");
+        home(7, gcode);
     }
 
     // check if on_halt (eg kill)
