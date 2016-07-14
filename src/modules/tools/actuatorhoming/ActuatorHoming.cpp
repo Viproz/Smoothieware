@@ -255,6 +255,7 @@ gcode->stream->printf("Iteration step %d/%d\r\nMoved : %d\r\n", s, steps, movedA
         for ( int c = X_AXIS; c <= Z_AXIS; c++ ) {
             if ( ( axes_to_move >> c) & 1 ) {
                 if(s < this->retract_mm[c] * STEPS_PER_MM(c)) {
+gcode->stream->printf("Moving2 %d\r\n", c);
                     STEPPER[c]->manual_step(!this->home_direction[c]);
                     movedAxis = true;
                 }
@@ -278,6 +279,7 @@ gcode->stream->printf("Iteration step %d/%d\r\nMoved : %d\r\n", s, steps, movedA
         for ( int c = X_AXIS; c <= Z_AXIS; c++ ) {
             if ( ( axes_to_move >> c) & 1 ) {
                 if(this->pins[c + this->home_direction[c]].get()) {
+gcode->stream->printf("Moving3 %d\r\n", c);
                     STEPPER[c]->manual_step(this->home_direction[c]);
                     movedAxis = true;
                 }
@@ -286,6 +288,7 @@ gcode->stream->printf("Iteration step %d/%d\r\nMoved : %d\r\n", s, steps, movedA
         //Safe delay
         safe_delay_us(delayus);
     }
+gcode->stream->printf("Done");
     
     this->status = NOT_HOMING;
 }
