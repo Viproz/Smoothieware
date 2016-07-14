@@ -12,6 +12,7 @@
 #include "modules/tools/extruder/ExtruderMaker.h"
 #include "modules/tools/temperaturecontrol/TemperatureControlPool.h"
 #include "modules/tools/endstops/Endstops.h"
+#include "modules/tools/actuatorhoming/ActuatorHoming.h"
 #include "modules/tools/zprobe/ZProbe.h"
 #include "modules/tools/scaracal/SCARAcal.h"
 #include "RotaryDeltaCalibration.h"
@@ -138,6 +139,10 @@ void init() {
     // these modules can be completely disabled in the Makefile by adding to EXCLUDE_MODULES
     #ifndef NO_TOOLS_ENDSTOPS
     kernel->add_module( new(AHB0) Endstops() );
+    #endif
+    
+    #ifndef NO_TOOLS_ACTUATORHOMING
+    kernel->add_module( new(AHB0) ActuatorHoming() );
     #endif
 
     #ifndef NO_TOOLS_SWITCH
