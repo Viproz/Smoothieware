@@ -222,8 +222,14 @@ void ActuatorHoming::home(char axes_to_move, Gcode* gcode)
         for ( int c = X_AXIS; c <= Z_AXIS; c++ ) {
             if ( ( axes_to_move >> c) & 1 ) {
 gcode->stream->printf("Moving %d\r\n", c);
-gcode->stream->printf("Debug %d, pins %d %d %d %d %d %d\r\n", 3*this->home_direction[c], this->pins[0].get(), this->pins[1].get(), this->pins[2].get(), this->pins[3].get(), this->pins[4].get(), this->pins[5].get());
-                if(this->pins[c + 3*this->home_direction[c]].get()) {
+                if(this->home_direction[c])
+gcode->stream->printf("right");
+                else
+gcode->stream->printf("wrong");
+                
+gcode->stream->printf("Direction %d\r\n", (int)this->home_direction[c]);
+gcode->stream->printf("Debug %d, pins %d %d %d %d %d %d\r\n", 3*(int)this->home_direction[c], this->pins[0].get(), this->pins[1].get(), this->pins[2].get(), this->pins[3].get(), this->pins[4].get(), this->pins[5].get());
+                if(this->pins[c + 3*(int)this->home_direction[c]].get()) {
                     movedAxis = true;
                     STEPPER[c]->manual_step(this->home_direction[c]);
                     movedAxis = true;
