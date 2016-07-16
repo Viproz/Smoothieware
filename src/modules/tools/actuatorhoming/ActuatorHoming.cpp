@@ -322,7 +322,7 @@ gcode->stream->printf("Homing all\r\n");
     }
     
     // set the actuator coordinate to homed value
-    gcode->stream->printf("Values %d %d %d\r\n", this->homing_position[0], this->homing_position[1], this->homing_position[2]);
+    gcode->stream->printf("Values %f %f %f\r\n", this->homing_position[0], this->homing_position[1], this->homing_position[2]);
     ActuatorCoordinates real_actuator_position = {this->homing_position[0], this->homing_position[1], this->homing_position[2]};
     THEKERNEL->robot->reset_actuator_position(real_actuator_position);
 
