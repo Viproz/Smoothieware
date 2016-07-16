@@ -285,13 +285,34 @@ void ActuatorHoming::home(char axes_to_move, Gcode* gcode)
         safe_delay_us(delayus);
     }
     
+    // Move back a small distance
+    this->status = MOVING_BACK;
+    sps = stepPermm * slowSpeed;
+    steps = 10000000 * stepPermm;
+    delayus= 1000000.0F / sps;
+    movedAxis = true;
+    for(int s = 0 ; s < steps && movedAxis ; s++) {
+        if(THEKERNEL->is_halted()) break;
+        movedAxis = false;
+
+        for ( int c = X_AXIS; c <= Z_AXIS; c++ ) {
+            if ( ( axes_to_move >> c) & 1 ) {
+                if(s < this->retract_mm[c] * STEPS_PER_MM(c)) {
+                    STEPPER[c]->manual_step(!this->home_direction[c]);
+                    movedAxis = true;
+                }
+            }
+        }
+        //Safe delay
+        safe_delay_us(delayus);
+    }
+
     this->status = NOT_HOMING;
 }
 
 void ActuatorHoming::process_home_command(Gcode* gcode)
 {
     // G28 is received, we have homing to do
-gcode->stream->printf("Start homing\r\n");
     // First wait for the queue to be empty
     THECONVEYOR->wait_for_idle();
 
@@ -303,13 +324,11 @@ gcode->stream->printf("Start homing\r\n");
         for (uint8_t m = homing_order; m != 0; m >>= 2) {
             int a = (1 << (m & 0x03)); // axis to move
             home(a, gcode);
-gcode->stream->printf("Homing %d \r\n", a);
             // check if on_halt (eg kill)
             if(THEKERNEL->is_halted()) break;
         }
     } else {
         // they all home at the same time
-gcode->stream->printf("Homing all\r\n");
         home(7, gcode);
     }
 
@@ -322,8 +341,7 @@ gcode->stream->printf("Homing all\r\n");
     }
     
     // set the actuator coordinate to homed value
-    gcode->stream->printf("Values %f %f %f\r\n", this->homing_position[0], this->homing_position[1], this->homing_position[2]);
-    ActuatorCoordinates real_actuator_position = {this->homing_position[0], this->homing_position[1], this->homing_position[2]};
+    ActuatorCoordinates real_actuator_position = {this->homing_position[0] + (-1)*!this->home_direction[0]*this->retract_mm[0], this->homing_position[1] + (-1)*!this->home_direction[1]*this->retract_mm[1], this->homing_position[2] + (-1)*!this->home_direction[2]*this->retract_mm[2]};
     THEKERNEL->robot->reset_actuator_position(real_actuator_position);
 
 }
