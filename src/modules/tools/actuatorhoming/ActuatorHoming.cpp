@@ -201,7 +201,6 @@ void ActuatorHoming::home(char axes_to_move, Gcode* gcode)
     float stepPermm = 0;
     for ( int c = X_AXIS; c <= Z_AXIS; c++ ) {
         if ( ( axes_to_move >> c) & 1 ) {
-        	STEPPER[c]->set_direction(this->home_direction[c]);
             if(fastSpeed == 0 || this->fast_rates[c] < fastSpeed)
                 fastSpeed = this->fast_rates[c];
             if(stepPermm == 0 || stepPermm > STEPS_PER_MM(c))
