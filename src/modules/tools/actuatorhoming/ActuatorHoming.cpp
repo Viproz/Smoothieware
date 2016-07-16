@@ -275,7 +275,7 @@ void ActuatorHoming::home(char axes_to_move, Gcode* gcode)
         
         for ( int c = X_AXIS; c <= Z_AXIS; c++ ) {
             if ( ( axes_to_move >> c) & 1 ) {
-                if(this->pins[c + 3*(int)!this->home_direction[c]].get()) {
+                if(!this->pins[c + 3*(int)!this->home_direction[c]].get()) {
                     STEPPER[c]->manual_step(this->home_direction[c]);
                     movedAxis = true;
                 }
@@ -284,7 +284,6 @@ void ActuatorHoming::home(char axes_to_move, Gcode* gcode)
         //Safe delay
         safe_delay_us(delayus);
     }
-gcode->stream->printf("Done");
     
     this->status = NOT_HOMING;
 }
@@ -323,6 +322,7 @@ gcode->stream->printf("Homing all\r\n");
     }
     
     // set the actuator coordinate to homed value
+    gcode->stream->printf("Values %d %d %d\r\n", this->homing_position[0], this->homing_position[1], this->homing_position[2]);
     ActuatorCoordinates real_actuator_position = {this->homing_position[0], this->homing_position[1], this->homing_position[2]};
     THEKERNEL->robot->reset_actuator_position(real_actuator_position);
 
