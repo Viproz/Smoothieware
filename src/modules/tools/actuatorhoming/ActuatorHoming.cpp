@@ -230,8 +230,6 @@ void ActuatorHoming::home(char axes_to_move, Gcode* gcode)
         //Safe delay
         safe_delay_us(delayus);
     }
-    
-    return;
 
     //using slowest fast speed of moved axis
     float slowSpeed = 0;
@@ -255,7 +253,6 @@ void ActuatorHoming::home(char axes_to_move, Gcode* gcode)
         for ( int c = X_AXIS; c <= Z_AXIS; c++ ) {
             if ( ( axes_to_move >> c) & 1 ) {
                 if(s < this->retract_mm[c] * STEPS_PER_MM(c)) {
-gcode->stream->printf("Moving2 %d\r\n", c);
                     STEPPER[c]->manual_step(!this->home_direction[c]);
                     movedAxis = true;
                 }
@@ -278,8 +275,7 @@ gcode->stream->printf("Moving2 %d\r\n", c);
         
         for ( int c = X_AXIS; c <= Z_AXIS; c++ ) {
             if ( ( axes_to_move >> c) & 1 ) {
-                if(this->pins[c + this->home_direction[c]].get()) {
-gcode->stream->printf("Moving3 %d\r\n", c);
+                if(this->pins[c + 3*(int)!this->home_direction[c]].get()) {
                     STEPPER[c]->manual_step(this->home_direction[c]);
                     movedAxis = true;
                 }
