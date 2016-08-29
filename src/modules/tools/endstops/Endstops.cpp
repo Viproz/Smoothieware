@@ -735,56 +735,18 @@ void Endstops::process_home_command(Gcode* gcode)
             start_pos[2] - THEKERNEL->robot->actuators[2]->get_current_position(),
             0));
 
-    if(home_all) {
-        // Here's where we would have been if the endstops were perfectly trimmed
-        // NOTE on a rotary delta home_offset is actuator position in degrees when homed and
-        // home_offset is the theta offset for each actuator, so M206 is used to set theta offset for each actuator in degrees
-        float ideal_position[3] = {
-            this->homing_position[X_AXIS] + this->home_offset[X_AXIS],
-            this->homing_position[Y_AXIS] + this->home_offset[Y_AXIS],
-            this->homing_position[Z_AXIS] + this->home_offset[Z_AXIS]
-        };
-
-        bool has_endstop_trim = this->is_delta || this->is_scara;
-        if (has_endstop_trim) {
-            ActuatorCoordinates ideal_actuator_position;
-            THEKERNEL->robot->arm_solution->cartesian_to_actuator(ideal_position, ideal_actuator_position);
-
-            // We are actually not at the ideal position, but a trim away
-            ActuatorCoordinates real_actuator_position = {
-                ideal_actuator_position[X_AXIS] - this->trim_mm[X_AXIS],
-                ideal_actuator_position[Y_AXIS] - this->trim_mm[Y_AXIS],
-                ideal_actuator_position[Z_AXIS] - this->trim_mm[Z_AXIS]
-            };
-
-            float real_position[3];
-            THEKERNEL->robot->arm_solution->actuator_to_cartesian(real_actuator_position, real_position);
-            // Reset the actuator positions to correspond our real position
-            THEKERNEL->robot->reset_axis_position(real_position[0], real_position[1], real_position[2]);
-
-        } else {
-            // without endstop trim, real_position == ideal_position
-            if(is_rdelta) {
-                // with a rotary delta we set the actuators angle then use the FK to calculate the resulting cartesian coordinates
-                ActuatorCoordinates real_actuator_position = {ideal_position[0], ideal_position[1], ideal_position[2]};
-                THEKERNEL->robot->reset_actuator_position(real_actuator_position);
-
-            } else {
-                // Reset the actuator positions to correspond our real position
-                ActuatorCoordinates current = {ideal_position[0], ideal_position[1], ideal_position[2]};
-                THEKERNEL->robot->reset_actuator_position(current);
-            }
-        }
-
-    } else {
-        // Zero the ax(i/e)s position, add in the home offset
-        for ( int c = X_AXIS; c <= Z_AXIS; c++ ) {
-            if ( (axes_to_move >> c)  & 1 ) {
-                THEKERNEL->robot->reset_axis_position(this->homing_position[c] + this->home_offset[c], c);
-            }
-        }
-    }
-
+    // Here's where we would have been if the endstops were perfectly trimmed
+    // NOTE on a rotary delta home_offset is actuator position in degrees when homed and
+    // home_offset is the theta offset for each actuator, so M206 is used to set theta offset for each actuator in degrees
+    ActuatorCoordinates ideal_position = {
+        this->homing_position[X_AXIS],
+        this->homing_position[Y_AXIS],
+        this->homing_position[Z_AXIS]
+    };
+    
+    // Reset the actuator positions to correspond our real position
+    THEKERNEL->robot->reset_actuator_position(ideal_position);
+   
     // on some systems where 0,0 is bed center it is nice to have home goto 0,0 after homing
     // default is off for cartesian on for deltas
     if(!is_delta) {
