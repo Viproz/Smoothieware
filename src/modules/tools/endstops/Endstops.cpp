@@ -771,7 +771,8 @@ void Endstops::process_home_command(Gcode* gcode)
 
             } else {
                 // Reset the actuator positions to correspond our real position
-                THEKERNEL->robot->reset_actuator_position(ideal_position[0], ideal_position[1], ideal_position[2]);
+                ActuatorCoordinates current = {ideal_position[0], ideal_position[1], ideal_position[2]};
+                THEKERNEL->robot->reset_actuator_position(current);
             }
         }
 
