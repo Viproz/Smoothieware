@@ -245,8 +245,6 @@ void Endstops::load_config()
         this->slow_rates[1] = this->slow_rates[2] = this->slow_rates[0];
         this->retract_mm[1] = this->retract_mm[2] = this->retract_mm[0];
         this->home_direction[1] = this->home_direction[2] = this->home_direction[0];
-        // NOTE homing_position for rdelta is the angle of the actuator not the cartesian position
-        if(!this->is_rdelta) this->homing_position[0] = this->homing_position[1] = 0;
     }
 }
 
