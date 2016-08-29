@@ -743,7 +743,7 @@ void Endstops::process_home_command(Gcode* gcode)
         this->homing_position[Y_AXIS],
         this->homing_position[Z_AXIS]
     };
-    
+    gcode->stream->printf("Homing done\n1:%f  2:%f  3:%f", ideal_position[0], ideal_position[1], ideal_position[2]);
     // Reset the actuator positions to correspond our real position
     THEKERNEL->robot->reset_actuator_position(ideal_position);
    
