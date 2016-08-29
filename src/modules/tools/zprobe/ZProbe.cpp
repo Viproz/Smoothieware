@@ -13,6 +13,7 @@
 #include "Robot.h"
 #include "StepperMotor.h"
 #include "StreamOutputPool.h"
+#include "libs/StreamOutput.h"
 #include "Gcode.h"
 #include "Conveyor.h"
 #include "Stepper.h"
@@ -197,14 +198,9 @@ bool ZProbe::run_probe(int& steps, float feedrate, float max_dist, bool reverse)
     this->current_feedrate = feedrate * Z_STEPS_PER_MM; // steps/sec
     float maxz= max_dist < 0 ? this->max_z*2 : max_dist;
 
-    // move Z down
-    bool dir= (!reverse_z != reverse); // xor
-    STEPPER[Z_AXIS]->move(dir, maxz * Z_STEPS_PER_MM, 0); // probe in specified direction, no more than maxz
-    if(this->is_delta || this->is_rdelta) {
-        // for delta need to move all three actuators
-        STEPPER[X_AXIS]->move(dir, maxz * STEPS_PER_MM(X_AXIS), 0);
-        STEPPER[Y_AXIS]->move(dir, maxz * STEPS_PER_MM(Y_AXIS), 0);
-    }
+    Gcode *gcode = new Gcode("G1 Z10", &StreamOutput::NullStream);
+    THEKERNEL->call_event(ON_GCODE_RECEIVED, gcode);
+    delete gcode;
 
     // start acceleration processing
     this->running = true;
@@ -455,6 +451,10 @@ uint32_t ZProbe::read_probe(uint32_t dummy)
     // TODO add debounce/noise filter
     if(this->pin.get()) {
         probe_detected= true;
+        // now tell all the stepper_motors to stop
+        for(auto &a : THEKERNEL->robot->actuators) a->force_finish_move();
+        // flush the queue
+        THEKERNEL->conveyor->flush_queue();
         // now tell all the stepper_motors to stop
         for(auto &a : THEKERNEL->robot->actuators) a->force_finish_move();
     }
