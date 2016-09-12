@@ -159,7 +159,6 @@ bool ZProbe::wait_for_probe(int& steps)
 
         // if the probe is active...
         if( this->pin.get() ) {
-            currGcode->stream->printf("Touch:%ld\n", time(nullptr));
             //...increase debounce counter...
             if( debounce < debounce_count) {
                 // ...but only if the counter hasn't reached the max. value
@@ -221,7 +220,6 @@ bool ZProbe::run_probe(int& steps, float feedrate, float max_dist, bool reverse)
 	//While not max and not detected
 	while(!error && !touched) {
 		//Convert -10Z pos to actuator
-	    currGcode->stream->printf("Pos : %f\n", pos[2]);
 		pos[Z_AXIS] = pos[Z_AXIS] - 5;
 		moved = moved + 5;
 
@@ -243,8 +241,6 @@ bool ZProbe::run_probe(int& steps, float feedrate, float max_dist, bool reverse)
 		for(int i = 0 ; i < 3 ; ++i)
 		    STEPPER[i]->move(stepsNeeded[i] > 0, abs(stepsNeeded[i]), STEPPER[i]->get_steps_per_mm() * feedrate * (float)(abs(stepsNeeded[i])) / (float)maxSteps);
 
-		currGcode->stream->printf("Ordered:%d - %d - %d\n", stepsNeeded[0], stepsNeeded[1], stepsNeeded[2]);
-        currGcode->stream->printf("Speed:%f\n", STEPPER[0]->get_steps_per_mm() * feedrate * (float)(abs(stepsNeeded[0])) / (float)maxSteps);
 
 		//Wait for move to be finished/endstop hit
 		while(true) {
@@ -256,13 +252,11 @@ bool ZProbe::run_probe(int& steps, float feedrate, float max_dist, bool reverse)
 
 			// if no stepper is moving, moves are finished and there was no touch
 			if(!STEPPER[X_AXIS]->is_moving() && !STEPPER[Y_AXIS]->is_moving() && !STEPPER[Z_AXIS]->is_moving()) {
-			    currGcode->stream->printf("Not there yet\n");
 				break;
 			}
 
 			// if the probe is active...
 			if( this->pin.get() ) {
-				currGcode->stream->printf("Touch:%ld\n", time(nullptr));
 
 				touched = true;
 
@@ -351,7 +345,6 @@ float ZProbe::probeDistance(float x, float y)
 void ZProbe::on_gcode_received(void *argument)
 {
     Gcode *gcode = static_cast<Gcode *>(argument);
-    this->currGcode = gcode;
 
     if( gcode->has_g && gcode->g >= 29 && gcode->g <= 32) {
 
