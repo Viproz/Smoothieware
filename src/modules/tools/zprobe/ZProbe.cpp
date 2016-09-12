@@ -28,6 +28,7 @@
 #include "LevelingStrategy.h"
 #include "StepTicker.h"
 #include "utils.h"
+#include "time.h"
 
 // strategies we know about
 #include "DeltaCalibrationStrategy.h"
@@ -158,11 +159,20 @@ bool ZProbe::wait_for_probe(int& steps)
 
         // if the probe is active...
         if( this->pin.get() ) {
+            currGcode->stream->printf("Touch:%ld\n", time(nullptr));
             //...increase debounce counter...
             if( debounce < debounce_count) {
                 // ...but only if the counter hasn't reached the max. value
                 debounce++;
             } else {
+
+                // now tell all the stepper_motors to stop
+                for(auto &a : THEKERNEL->robot->actuators) a->force_finish_move();
+                // flush the queue
+                THEKERNEL->conveyor->flush_queue();
+                // now tell all the stepper_motors to stop
+                for(auto &a : THEKERNEL->robot->actuators) a->force_finish_move();
+
                 // ...otherwise stop the steppers, return its remaining steps
                 if(STEPPER[Z_AXIS]->is_moving()){
                     steps= STEPPER[Z_AXIS]->get_stepped();
@@ -196,21 +206,82 @@ bool ZProbe::run_probe(int& steps, float feedrate, float max_dist, bool reverse)
     // Enable the motors
     THEKERNEL->stepper->turn_enable_pins_on();
     this->current_feedrate = feedrate * Z_STEPS_PER_MM; // steps/sec
-    float maxz= max_dist < 0 ? this->max_z*2 : max_dist;
 
-    Gcode *gcode = new Gcode("G1 Z10", &StreamOutput::NullStream);
-    THEKERNEL->call_event(ON_GCODE_RECEIVED, gcode);
-    delete gcode;
+	//Get XYZ pos
+	float pos[3];
+	THEKERNEL->robot->get_axis_position(pos);
+	ActuatorCoordinates actuatorPos;
+	int stepsNeeded[3];
+	int maxSteps;
+	float moved = 0;
 
-    // start acceleration processing
-    this->running = true;
+    bool error = false;
+    bool touched = false;
 
-    bool r = wait_for_probe(steps);
-    this->running = false;
+	//While not max and not detected
+	while(!error && !touched) {
+		//Convert -10Z pos to actuator
+	    currGcode->stream->printf("Pos : %f\n", pos[2]);
+		pos[Z_AXIS] = pos[Z_AXIS] - 5;
+		moved = moved + 5;
+
+		THEKERNEL->robot->arm_solution->cartesian_to_actuator(pos, actuatorPos);
+
+        //Get step movement
+        for(int i = 0; i < 3; ++i)
+            stepsNeeded[i] = lroundf((STEPPER[i]->get_current_position() - actuatorPos[i]) * STEPPER[i]->get_steps_per_mm());
+
+        //Calc max movement for speed
+        maxSteps = 0;
+        for(int i = 0; i < 3; ++i) {
+            if(abs(stepsNeeded[i]) > maxSteps) {
+                maxSteps = abs(stepsNeeded[i]);
+            }
+        }
+
+        //Move
+		for(int i = 0 ; i < 3 ; ++i)
+		    STEPPER[i]->move(stepsNeeded[i] > 0, abs(stepsNeeded[i]), STEPPER[i]->get_steps_per_mm() * feedrate * (float)(abs(stepsNeeded[i])) / (float)maxSteps);
+
+		currGcode->stream->printf("Ordered:%d - %d - %d\n", stepsNeeded[0], stepsNeeded[1], stepsNeeded[2]);
+        currGcode->stream->printf("Speed:%f\n", STEPPER[0]->get_steps_per_mm() * feedrate * (float)(abs(stepsNeeded[0])) / (float)maxSteps);
+
+		//Wait for move to be finished/endstop hit
+		while(true) {
+			THEKERNEL->call_event(ON_IDLE);
+			if(THEKERNEL->is_halted()) {
+				// aborted by kill
+				return false;
+			}
+
+			// if no stepper is moving, moves are finished and there was no touch
+			if(!STEPPER[X_AXIS]->is_moving() && !STEPPER[Y_AXIS]->is_moving() && !STEPPER[Z_AXIS]->is_moving()) {
+			    currGcode->stream->printf("Not there yet\n");
+				break;
+			}
+
+			// if the probe is active...
+			if( this->pin.get() ) {
+				currGcode->stream->printf("Touch:%ld\n", time(nullptr));
+
+				touched = true;
+
+				//Stop the motors
+				for( int i = 0; i < 3; i++ )
+				    if (STEPPER[i]->is_moving())
+				        STEPPER[i]->move(0, 0);
+				break;
+			}
+
+		}
+
+	}
+
+	//Make sure they are all stopped
     STEPPER[X_AXIS]->move(0, 0);
     STEPPER[Y_AXIS]->move(0, 0);
     STEPPER[Z_AXIS]->move(0, 0);
-    return r;
+    return touched;
 }
 
 bool ZProbe::return_probe(int steps, bool reverse)
@@ -280,6 +351,7 @@ float ZProbe::probeDistance(float x, float y)
 void ZProbe::on_gcode_received(void *argument)
 {
     Gcode *gcode = static_cast<Gcode *>(argument);
+    this->currGcode = gcode;
 
     if( gcode->has_g && gcode->g >= 29 && gcode->g <= 32) {
 
@@ -301,11 +373,19 @@ void ZProbe::on_gcode_received(void *argument)
             bool probe_result;
             bool reverse= (gcode->has_letter('R') && gcode->get_value('R') != 0); // specify to probe in reverse direction
             float rate= gcode->has_letter('F') ? gcode->get_value('F') / 60 : this->slow_feedrate;
+
+            float start[3];
+            THEKERNEL->robot->get_axis_position(start);
+
             probe_result = run_probe(steps, rate, -1, reverse);
+            THEKERNEL->robot->reset_position_from_current_actuator_position();
+
+            float end[3];
+            THEKERNEL->robot->get_axis_position(end);
 
             if(probe_result) {
                 // the result is in actuator coordinates and raw steps
-                gcode->stream->printf("Z:%1.4f C:%d\n", zsteps_to_mm(steps), steps);
+                gcode->stream->printf("Z:%1.4f C:%d\n", start[Z_AXIS] - end[Z_AXIS], steps);
 
                 // set the last probe position to the current actuator units
                 THEKERNEL->robot->set_last_probe_position(std::make_tuple(
@@ -313,16 +393,6 @@ void ZProbe::on_gcode_received(void *argument)
                     THEKERNEL->robot->actuators[Y_AXIS]->get_current_position(),
                     THEKERNEL->robot->actuators[Z_AXIS]->get_current_position(),
                     1));
-
-                // move back to where it started, unless a Z is specified (and not a rotary delta)
-                if(gcode->has_letter('Z') && !is_rdelta) {
-                    // set Z to the specified value, and leave probe where it is
-                    THEKERNEL->robot->reset_axis_position(gcode->get_value('Z'), Z_AXIS);
-
-                } else {
-                    // return to pre probe position
-                    return_probe(steps, reverse);
-                }
 
             } else {
                 gcode->stream->printf("ZProbe not triggered\n");

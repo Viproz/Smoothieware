@@ -62,6 +62,8 @@ private:
     float probe_height;
     float max_z;
 
+    Gcode* currGcode;
+
     Pin pin;
     std::vector<LevelingStrategy*> strategies;
     uint8_t debounce_count;
